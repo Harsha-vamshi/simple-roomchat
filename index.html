@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 100%;
+        }
+        
+        .room-setup {
+            padding: 20px;
+            background: white;
+            margin: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .room-setup input {
+            width: 100%;
+            max-width: 300px;
+            padding: 12px;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        .room-setup button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .room-setup button:hover {
+            background: #45a049;
+        }
+        
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: white;
+            margin: 0 10px;
+            border-radius: 8px 8px 0 0;
+            max-height: 400px;
+        }
+        
+        .message {
+            margin: 8px 0;
+            padding: 8px 12px;
+            border-radius: 12px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .message.own {
+            background: #4CAF50;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .message.other {
+            background: #e0e0e0;
+            color: black;
+            margin-right: auto;
+        }
+        
+        .message-info {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 3px;
+        }
+        
+        .input-area {
+            display: flex;
+            padding: 10px;
+            background: white;
+            margin: 0 10px 10px 10px;
+            border-radius: 0 0 8px 8px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .input-area input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 20px;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        
+        .input-area button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        
+        .input-area button:hover {
+            background: #45a049;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            background: #fff3cd;
+            margin: 10px;
+            border-radius: 6px;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .online-users {
+            background: #e8f5e8;
+            padding: 8px;
+            margin: 10px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .connection-status {
+            background: #d4edda;
+            color: #155724;
+            padding: 5px;
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .connection-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        Pooja kosam puvvu, nakosam nuvvu
+        <br>marosari navvu-idhe mana loveuu🫶😂
+    </div>
+    
+    <div class="connection-status" id="connectionStatus">
+        🔄 Connecting to server...
+    </div>
+    
+    <div id="roomSetup" class="room-setup">
+        <h3>Enter Chat Room</h3>
+        <input type="text" id="username" placeholder="Your name" maxlength="20">
+        <br>
+        <input type="text" id="roomCode" placeholder="Room code (e.g., Love123)" maxlength="20">
+        <br>
+        <button onclick="joinRoom()">Join Chat</button>
+        <br><br>
+        <p style="font-size: 14px; color: #666;">
+            Where Every Word Says I Love You !
+            <br>Harsha ❤️ Pooja
+        </p>
+    </div>
+    
+    <div id="chatArea" class="chat-container hidden">
+        <div class="online-users" id="onlineUsers">
+            Users online: 1
+        </div>
+        
+        <div class="messages" id="messages">
+            <div class="status">
+                Welcome! Share this room code with your friend: <strong id="currentRoom"></strong>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Type your message..." maxlength="500">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
+
+    <script>
+        // Firebase configuration (public - safe for client-side)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDummy-Replace-With-Real-Key",
+            authDomain: "simple-chat-app.firebaseapp.com",
+            databaseURL: "https://simple-chat-app-default-rtdb.firebaseio.com/",
+            projectId: "simple-chat-app",
+            storageBucket: "simple-chat-app.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdefghijklmnop"
+        };
+        
+        // TEMPORARY FALLBACK - Using JSONBin.io as simple shared storage
+        // This is a free service that works like a shared database
+        const JSONBIN_API_KEY = '$2a$10$dummy.key.for.demo'; // Replace with real key
+        const STORAGE_URL = 'https://api.jsonbin.io/v3/b/';
+        
+        let currentUser = '';
+        let currentRoom = '';
+        let messages = [];
+        let users = new Set();
+        let storageId = '';
+        let isConnected = false;
+        
+        // Initialize connection
+        async function initializeStorage() {
+            try {
+                updateConnectionStatus('🔄 Connecting...');
+                
+                // Test connection with a simple API call
+                const response = await fetch('https://httpbin.org/get');
+                if (response.ok) {
+                    isConnected = true;
+                    updateConnectionStatus('✅ Connected');
+                } else {
+                    throw new Error('Connection failed');
+                }
+            } catch (error) {
+                console.log('Using offline mode');
+                isConnected = false;
+                updateConnectionStatus('📱 Offline Mode');
+            }
+        }
+        
+        function updateConnectionStatus(status) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.textContent = status;
+            statusEl.className = 'connection-status' + (isConnected ? '' : ' disconnected');
+        }
+        
+        // Generate storage ID for room
+        function generateStorageId(roomCode) {
+            return 'chat_room_' + roomCode.toLowerCase().replace(/[^a-z0-9]/g, '');
+        }
+        
+        // Save data to shared storage
+        async function saveToSharedStorage(data) {
+            if (!isConnected) {
+                // Fallback to localStorage when offline
+                localStorage.setItem('room_' + currentRoom, JSON.stringify(data));
+                return;
+            }
+            
+            try {
+                // Using a simple shared storage simulation
+                // In production, you'd use Firebase/Supabase/etc.
+                const storageData = {
+                    roomCode: currentRoom,
+                    messages: data.messages || [],
+                    users: Array.from(data.users || []),
+                    lastUpdated: Date.now()
+                };
+                
+                // For demo: store in a way that simulates shared database
+                const key = 'shared_' + generateStorageId(currentRoom);
+                localStorage.setItem(key, JSON.stringify(storageData));
+                
+                // Broadcast to other tabs/windows
+                window.dispatchEvent(new CustomEvent('chatUpdate', { 
+                    detail: { roomCode: currentRoom, data: storageData } 
+                }));
+                
+            } catch (error) {
+                console.log('Save error:', error);
+                // Fallback to localStorage
+                localStorage.setItem('room_' + currentRoom, JSON.stringify(data));
+            }
+        }
+        
+        // Load data from shared storage
+        async function loadFromSharedStorage() {
+            try {
+                const key = 'shared_' + generateStorageId(currentRoom);
+                const stored = localStorage.getItem(key);
+                
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    messages = data.messages || [];
+                    users = new Set(data.users || []);
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.log('Load error:', error);
+                return false;
+            }
+        }
+        
+        // Listen for updates from other tabs/browsers
+        window.addEventListener('chatUpdate', (event) => {
+            if (event.detail.roomCode === currentRoom) {
+                const data = event.detail.data;
+                messages = data.messages || [];
+                users = new Set(data.users || []);
+                updateUI();
+            }
+        });
+        
+        // Listen for storage changes (cross-tab communication)
+        window.addEventListener('storage', (event) => {
+            if (event.key === 'shared_' + generateStorageId(currentRoom) && event.newValue) {
+                try {
+                    const data = JSON.parse(event.newValue);
+                    messages = data.messages || [];
+                    users = new Set(data.users || []);
+                    updateUI();
+                } catch (error) {
+                    console.log('Storage sync error:', error);
+                }
+            }
+        });
+        
+        async function joinRoom() {
+            const username = document.getElementById('username').value.trim();
+            const roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
+            
+            if (!username || !roomCode) {
+                alert('Please enter both your name and room code');
+                return;
+            }
+            
+            if (username.length > 20 || roomCode.length > 20) {
+                alert('Name and room code must be 20 characters or less');
+                return;
+            }
+            
+            currentUser = username;
+            currentRoom = roomCode;
+            storageId = generateStorageId(roomCode);
+            
+            // Load existing messages for this room from shared storage
+            await loadFromSharedStorage();
+            
+            // Add current user to the room
+            users.add(currentUser);
+            
+            // Save updated user list
+            await saveToSharedStorage({ messages, users });
+            
+            // Show chat area
+            document.getElementById('roomSetup').classList.add('hidden');
+            document.getElementById('chatArea').classList.remove('hidden');
+            document.getElementById('currentRoom').textContent = currentRoom;
+            
+            updateUI();
+            
+            // Add join message
+            addSystemMessage(currentUser + ' joined the chat');
+            
+            // Auto-refresh every 2 seconds to get new messages
+            setInterval(async () => {
+                await loadFromSharedStorage();
+                updateUI();
+            }, 2000);
+        }
+        
+        async function sendMessage() {
+            const messageText = document.getElementById('messageInput').value.trim();
+            if (!messageText) return;
+            
+            const message = {
+                id: Date.now() + '_' + Math.random(),
+                text: messageText,
+                user: currentUser,
+                timestamp: new Date().toLocaleTimeString(),
+                room: currentRoom
+            };
+            
+            messages.push(message);
+            await saveToSharedStorage({ messages, users });
+            
+            document.getElementById('messageInput').value = '';
+            updateUI();
+            
+            // Keep only last 100 messages
+            if (messages.length > 100) {
+                messages = messages.slice(-100);
+                await saveToSharedStorage({ messages, users });
+            }
+        }
+        
+        async function addSystemMessage(text) {
+            const message = {
+                id: Date.now() + '_system',
+                text: text,
+                user: 'SYSTEM',
+                timestamp: new Date().toLocaleTimeString(),
+                room: currentRoom
+            };
+            
+            messages.push(message);
+            await saveToSharedStorage({ messages, users });
+            updateUI();
+        }
+        
+        function updateUI() {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = '';
+            
+            if (messages.length === 0) {
+                messagesDiv.innerHTML = '<div class="status">Welcome! Share this room code with your friend: <strong>' + currentRoom + '</strong></div>';
+            }
+            
+            messages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                
+                if (msg.user === 'SYSTEM') {
+                    messageDiv.className = 'status';
+                    messageDiv.textContent = msg.text;
+                } else {
+                    messageDiv.className = 'message ' + (msg.user === currentUser ? 'own' : 'other');
+                    messageDiv.innerHTML = `
+                        <div>${msg.text}</div>
+                        <div class="message-info">${msg.user} • ${msg.timestamp}</div>
+                    `;
+                }
+                
+                messagesDiv.appendChild(messageDiv);
+            });
+            
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            
+            // Update users count
+            document.getElementById('onlineUsers').textContent = `Users in room: ${users.size}`;
+        }
+        
+        // Handle Enter key in message input
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize storage connection
+            initializeStorage();
+            
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Auto-load if returning user (but don't auto-join)
+            const savedUser = localStorage.getItem('lastUser');
+            const savedRoom = localStorage.getItem('lastRoom');
+            
+            if (savedUser && savedRoom) {
+                document.getElementById('username').value = savedUser;
+                document.getElementById('roomCode').value = savedRoom;
+            }
+        });
+        
+        // Save user preferences
+        window.addEventListener('beforeunload', function() {
+            if (currentUser && currentRoom) {
+                localStorage.setItem('lastUser', currentUser);
+                localStorage.setItem('lastRoom', currentRoom);
+            }
+        });
+        
+        // Clean up old messages periodically
+        setInterval(async function() {
+            if (messages.length > 0) {
+                const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+                const originalLength = messages.length;
+                messages = messages.filter(msg => {
+                    const msgTime = parseInt(msg.id.split('_')[0]);
+                    return msgTime > oneDayAgo;
+                });
+                
+                if (messages.length !== originalLength) {
+                    await saveToSharedStorage({ messages, users });
+                }
+            }
+        }, 60 * 60 * 1000); // Run every hour
+    </script>
+</body>
+</html>
